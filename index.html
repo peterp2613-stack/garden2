@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garden Planner & Tracker</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #e8e8e8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            font-family: Arial, sans-serif;
+        }
+        #header {
+            width: 1400px;
+            background: #4CAF50;
+            padding: 15px 20px;
+            text-align: left;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            color: white;
+        }
+        #header h1 {
+            margin: 0;
+            font-size: 28px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+        }
+        #header button {
+            width: auto;
+            padding: 9px 18px;
+            margin: 0 0 0 20px;
+            background: white;
+            color: #4CAF50;
+            border: 1px solid white;
+            font-weight: bold;
+            font-size: 17px;
+        }
+        #header button:hover {
+            background: rgba(255,255,255,0.9);
+        }
+        #main-wrapper {
+            width: 1400px;
+            height: 800px;
+            display: flex;
+            gap: 20px;
+            background: white;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        #garden-canvas {
+            position: relative;
+            width: 1000px;
+            height: 100%;
+            border: 5px solid green;
+            background-color: #f0f8ff;
+            overflow: hidden;
+        }
+        #sidebar {
+            width: 340px;
+            padding: 20px;
+            background: white;
+            overflow-y: auto;
+        }
+        h2 {
+            margin: 25px 0 10px 0;
+            color: #2c3e50;
+            font-size: 18px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        button:hover { background: #45a049; }
+        .bin {
+            position: absolute;
+            background-color: #d2b48c;
+            border: 3px solid #8b4513;
+            cursor: pointer;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        .ground-area {
+            position: absolute;
+            background-color: #90ee90;
+            border: 2px dashed #006400;
+            cursor: pointer;
+            text-align: center;
+            color: #006400;
+            font-weight: bold;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            box-sizing: border-box;
+        }
+        .action-icon {
+            position: absolute;
+            top: 2px;
+            width: 16px;
+            height: 16px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            font-size: 11px;
+            line-height: 16px;
+            text-align: center;
+            border-radius: 3px;
+            cursor: pointer;
+            display: none;
+        }
+        .bin.selected .action-icon, .ground-area.selected .action-icon {
+            display: block;
+        }
+        .icons {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .bin.vertical .icons {
+            bottom: 2px;
+            left: 2px;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            white-space: normal;
+            line-height: 1.2;
+        }
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .inventory-table th {
+            background: #e0e0e0;
+            text-align: left;
+            padding: 10px;
+            border-bottom: 2px solid #aaa;
+        }
+        .inventory-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .notes-cell {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            color: #0066cc;
+        }
+        .notes-cell:hover {
+            text-decoration: underline;
+        }
+        .stock-indicator, .harvest-indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 12px;
+            box-shadow: 0 0 10px;
+        }
+        .in-stock { background: #4caf50; }
+        .out-of-stock { background: #f44336; }
+        .harvest-great { background: purple; }
+        .harvest-good { background: #4caf50; }
+        .harvest-okay { background: yellow; }
+        .harvest-bad { background: #f44336; }
+        .ui-datepicker td.has-note a {
+            position: relative;
+        }
+        .ui-datepicker td.has-note a:after {
+            content: '✏';
+            position: absolute;
+            bottom: -5px;
+            right: 0;
+            font-size: 12px;
+            color: green;
+        }
+        .ui-datepicker td.has-reminder {
+            border: 2px solid red !important;
+        }
+        #calendar .ui-datepicker {
+            font-size: 1.35em;
+        }
+        #weather-forecast {
+            margin-top: 20px;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        #weather-forecast h3 {
+            margin: 0 0 10px;
+        }
+        #weather-forecast p {
+            margin: 5px 0;
+        }
+        .print-btn {
+            width: auto;
+            padding: 8px 16px;
+            margin: 10px 0 0 0;
+            background: #2196F3;
+            font-size: 14px;
+        }
+        .print-btn:hover {
+            background: #1E88E5;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .printable, .printable * {
+                visibility: visible;
+            }
+            .printable {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Picone Garden 2026</h1>
+        <button id="manage-calendar">Calendar</button>
+        <button id="manage-calculator">Calculator</button>
+        <button id="export-data">Export</button>
+        <button id="import-data">Import</button>
+    </div>
+    <div id="main-wrapper">
+        <div id="garden-canvas"></div>
+
+        <div id="sidebar">
+            <h2>Controls</h2>
+            <button id="add-bin">New Bin</button>
+            <button id="add-ground">New Ground Area</button>
+
+            <h2>Needed</h2>
+            <button id="manage-needed">Needed</button>
+
+            <h2>Starter Inventory</h2>
+            <button id="manage-seeds">Seeds</button>
+            <button id="manage-soil">Soil</button>
+            <button id="manage-fertilizer">Fertilizer</button>
+
+            <h2>Active Grow</h2>
+            <button id="manage-activegrow">Active Grow</button>
+
+            <h2>Harvest</h2>
+            <button id="manage-harvest">Harvest</button>
+
+            <h2>On-Hand Inventory</h2>
+            <button id="manage-onhand">On-Hand Inventory</button>
+        </div>
+    </div>
+
+    <!-- Needed Popup -->
+    <div id="needed-popup" title="Needed Items" style="display:none">
+        <div id="needed-content"></div>
+    </div>
+
+    <!-- Needed Modal -->
+    <div id="add-needed-modal" title="Add/Edit Needed Item" style="display:none">
+        <label>Item Name:</label><input type="text" id="needed-name"><br><br>
+        <label>Quantity:</label><input type="number" min="0" step="0.01" id="needed-qty" value="1"><br>
+        <label>Unit:</label>
+        <select id="needed-unit">
+            <option>pounds</option>
+            <option>grams</option>
+            <option>ounces</option>
+        </select><br><br>
+        <label>Date Needed:</label><input type="date" id="needed-date"><br><br>
+        <label>Notes:</label><br><textarea id="needed-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- Seeds Popup -->
+    <div id="seeds-popup" title="Seeds Inventory" style="display:none">
+        <div id="seeds-content"></div>
+    </div>
+
+    <!-- Seeds Modal -->
+    <div id="add-seed-modal" title="Add/Edit Seed" style="display:none">
+        <label>Name:</label><input type="text" id="seed-name"><br><br>
+        <label>Variety:</label><input type="text" id="seed-variety"><br><br>
+        <label>Type:</label>
+        <select id="seed-type">
+            <option>Vegetable</option>
+            <option>Fruit</option>
+            <option>Herb</option>
+        </select><br><br>
+        <label>Purchase Date:</label><input type="date" id="seed-purchase-date"><br><br>
+        <label>Notes:</label><br><textarea id="seed-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- Soil Popup -->
+    <div id="soil-popup" title="Soil Inventory" style="display:none">
+        <div id="soil-content"></div>
+    </div>
+
+    <!-- Soil Modal -->
+    <div id="add-soil-modal" title="Add/Edit Soil" style="display:none">
+        <label>Soil Name:</label><input type="text" id="soil-name"><br><br>
+        <label>Quantity:</label><input type="number" min="0" id="soil-qty" value="0"><br><br>
+        <label>Category:</label><input type="text" id="soil-category"><br><br>
+        <label>Date Acquired:</label><input type="date" id="soil-date"><br><br>
+        <label>Notes:</label><br><textarea id="soil-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- Fertilizer Popup -->
+    <div id="fertilizer-popup" title="Fertilizer Inventory" style="display:none">
+        <div id="fertilizer-content"></div>
+    </div>
+
+    <!-- Fertilizer Modal -->
+    <div id="add-fertilizer-modal" title="Add/Edit Fertilizer" style="display:none">
+        <label>Fertilizer Name:</label><input type="text" id="fert-name"><br><br>
+        <label>Quantity:</label><input type="number" min="0" id="fert-qty" value="0"><br><br>
+        <label>Category:</label><input type="text" id="fert-category"><br><br>
+        <label>Date Acquired:</label><input type="date" id="fert-date"><br><br>
+        <label>Notes:</label><br><textarea id="fert-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- Active Grow Popup -->
+    <div id="activegrow-popup" title="Active Grow" style="display:none">
+        <div id="activegrow-content"></div>
+    </div>
+
+    <!-- Active Grow Modal -->
+    <div id="add-activegrow-modal" title="Add/Edit Active Grow" style="display:none">
+        <label>Plant Name:</label><input type="text" id="activegrow-name"><br><br>
+        <label>Variety:</label><input type="text" id="activegrow-variety"><br><br>
+        <label>Type:</label>
+        <select id="activegrow-type">
+            <option>Vegetable</option>
+            <option>Fruit</option>
+            <option>Herb</option>
+        </select><br><br>
+        <label>Bin Number / Area:</label><input type="text" id="activegrow-bin"><br><br>
+        <label>Quantity:</label><input type="number" min="0" id="activegrow-qty" value="1"><br><br>
+        <label>Seed Date:</label><input type="date" id="activegrow-seeddate"><br><br>
+        <label>Maturity Date:</label><input type="date" id="activegrow-maturitydate"><br><br>
+        <label>Custom Icon (optional):</label><input type="text" id="activegrow-icon" placeholder="e.g. 🍅"><br><br>
+        <label>Notes:</label><br><textarea id="activegrow-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- Harvest Popup -->
+    <div id="harvest-popup" title="Harvest Log" style="display:none">
+        <div id="harvest-content"></div>
+    </div>
+
+    <!-- Harvest Modal -->
+    <div id="add-harvest-modal" title="Add/Edit Harvest" style="display:none">
+        <label>Crop Name:</label><input type="text" id="harvest-name"><br><br>
+        <label>Quality:</label>
+        <select id="harvest-quality">
+            <option value="great">Great (Purple)</option>
+            <option value="good">Good (Green)</option>
+            <option value="okay">Okay (Yellow)</option>
+            <option value="bad">Bad (Red)</option>
+        </select><br><br>
+        <label>Type:</label>
+        <select id="harvest-type">
+            <option>Vegetable</option>
+            <option>Fruit</option>
+            <option>Herb</option>
+        </select><br><br>
+        <label>Quantity:</label><input type="number" min="0" step="0.01" id="harvest-qty"><br>
+        <label>Unit:</label>
+        <select id="harvest-unit">
+            <option>pounds</option>
+            <option>grams</option>
+            <option>ounces</option>
+        </select><br><br>
+        <label>Date Harvested:</label><input type="date" id="harvest-date"><br><br>
+        <label>Notes:</label><br><textarea id="harvest-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- On-Hand Popup -->
+    <div id="onhand-popup" title="On-Hand Inventory" style="display:none">
+        <div id="onhand-content"></div>
+    </div>
+
+    <!-- On-Hand Modal -->
+    <div id="add-onhand-modal" title="Add/Edit On-Hand Item" style="display:none">
+        <label>Name:</label><input type="text" id="onhand-name"><br><br>
+        <label>Variety:</label><input type="text" id="onhand-variety"><br><br>
+        <label>Type:</label>
+        <select id="onhand-type">
+            <option>Vegetable</option>
+            <option>Fruit</option>
+            <option>Herb</option>
+        </select><br><br>
+        <label>Quantity:</label><input type="number" min="0" step="0.01" id="onhand-qty" value="0"><br><br>
+        <label>Notes:</label><br><textarea id="onhand-notes" rows="4" cols="40"></textarea>
+    </div>
+
+    <!-- Contents Popup -->
+    <div id="contents-popup" title="Contents" style="display:none">
+        <div id="contents-list"></div>
+    </div>
+
+    <div id="notes-modal" title="Full Notes" style="display:none">
+        <pre id="full-notes" style="white-space: pre-wrap; font-family: inherit;"></pre>
+    </div>
+
+    <!-- Calendar Popup -->
+    <div id="calendar-popup" title="Garden Calendar" style="display:none">
+        <div id="calendar"></div>
+        <div id="weather-forecast"></div>
+    </div>
+
+    <!-- Note Modal -->
+    <div id="note-modal" title="Date Note / Reminder" style="display:none">
+        <select id="entry-type">
+            <option value="note">Note</option>
+            <option value="reminder">Reminder</option>
+        </select><br><br>
+        <textarea id="date-note" rows="5" cols="40"></textarea>
+    </div>
+
+    <!-- Cubic Calculator Popup -->
+    <div id="calculator-popup" title="Cubic Feet to Cubic Yards Calculator" style="display:none">
+        <div id="cubic-calculator">
+            <h3>Cubic Feet → Cubic Yards</h3>
+            <input type="number" id="cubic-feet" placeholder="Enter cubic feet" min="0" step="0.01">
+            <div class="result">Cubic Yards: <span id="cubic-yards">0</span></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+    <script>
+        const canvas = $('#garden-canvas');
+        let bins = [];
+        let groundAreas = [];
+        let nextBinId = 1;
+        let nextGroundId = 1;
+        let needed = [];
+        let seeds = [];
+        let soils = [];
+        let fertilizers = [];
+        let activegrow = [];
+        let harvest = [];
+        let onhand = [];
+        let notes = {};
+        let currentIndex = null;
+        let calendarInitialized = false;
+
+        const BIN_HORIZONTAL = { width: 110, height: 28 };
+        const BIN_VERTICAL = { width: 28, height: 110 };
+
+        let nextLeft = 50;
+        let nextTop = 50;
+        const spacingX = 140;
+        const spacingY = 120;
+
+        const plantIcons = {
+            'tomato': '🍅',
+            'potato': '🥔',
+            'squash': '🥒',
+            'corn': '🌽',
+            'broccoli': '🥦',
+            'carrot': '🥕',
+            'pepper': '🌶️',
+            'lettuce': '🥬',
+            'strawberry': '🍓',
+            'apple': '🍎',
+            'banana': '🍌',
+            'orange': '🍊',
+            'grape': '🍇',
+            'basil': '🌿',
+            'mint': '🌿',
+            'rosemary': '🌿',
+            'onion': '🧅',
+            'onions': '🧅',
+            'pumpkin': '🎃',
+            'pumpkins': '🎃',
+            'cucumber': '🥒',
+            'zucchini': '🥒',
+            'radish': '🥗',
+            'bean': '🫘',
+            'beans': '🫘',
+            'pea': '🫛',
+            'peas': '🫛',
+            'vegetable': '🥦',
+            'fruit': '🍎',
+            'herb': '🌿',
+            'default': '⭐'
+        };
+
+        function initDefault() {
+            bins = [];
+            groundAreas = [];
+            nextBinId = 1;
+            nextGroundId = 1;
+            nextLeft = 50;
+            nextTop = 50;
+
+            for (let row = 0; row < 4; row++) {
+                nextLeft = 50;
+                for (let col = 0; col < 4; col++) {
+                    addBin();
+                }
+                nextTop += spacingY;
+            }
+
+            nextTop = 400;
+            nextLeft = 100;
+            addGroundArea(nextLeft, nextTop);
+            nextLeft += 300;
+            addGroundArea(nextLeft, nextTop);
+            nextLeft += 300;
+            addGroundArea(nextLeft, nextTop);
+
+            loadData();
+        }
+
+        function addBin() {
+            const label = `Bin ${nextBinId}`;
+            const id = `bin-${nextBinId++}`;
+            const newBin = {
+                id: id,
+                label: label,
+                left: nextLeft,
+                top: nextTop,
+                width: BIN_HORIZONTAL.width,
+                height: BIN_HORIZONTAL.height,
+                orientation: 'horizontal'
+            };
+            bins.push(newBin);
+            updateNextPosition();
+            renderBins();
+            saveData();
+        }
+
+        function addGroundArea(left = null, top = null, name = `AR ${nextGroundId}`) {
+            const id = `ground-${nextGroundId++}`;
+            const newArea = {
+                id: id,
+                name: name,
+                left: left !== null ? left : nextLeft,
+                top: top !== null ? top : nextTop,
+                width: 180,
+                height: 180
+            };
+            groundAreas.push(newArea);
+            renderGroundAreas();
+            saveData();
+        }
+
+        function updateNextPosition() {
+            nextLeft += spacingX;
+            if (nextLeft > 850) {
+                nextLeft = 50;
+                nextTop += spacingY;
+            }
+        }
+
+        function getPlantIcon(item) {
+            const nameLower = item.name.toLowerCase();
+            const typeLower = item.type.toLowerCase();
+            return item.icon || plantIcons[nameLower] || plantIcons[typeLower] || plantIcons['default'];
+        }
+
+        function renderBins() {
+            bins.forEach(bin => {
+                let binDiv = $(`#${bin.id}`);
+                if (binDiv.length === 0) {
+                    binDiv = $(`<div class="bin" id="${bin.id}">
+                        <span class="label">${bin.label}</span>
+                        <div class="icons"></div>
+                        <div class="action-icon rotate-icon">↻</div>
+                        <div class="action-icon edit-icon">✎</div>
+                        <div class="action-icon delete-icon">✖</div>
+                    </div>`);
+                    canvas.append(binDiv);
+                }
+
+                binDiv.css({
+                    left: bin.left + 'px',
+                    top: bin.top + 'px',
+                    width: bin.width + 'px',
+                    height: bin.height + 'px'
+                });
+
+                if (bin.orientation === 'vertical') {
+                    binDiv.addClass('vertical');
+                } else {
+                    binDiv.removeClass('vertical');
+                }
+
+                binDiv.find('.rotate-icon').css({right: '2px'});
+                binDiv.find('.edit-icon').css({right: '20px'});
+                binDiv.find('.delete-icon').css({right: '38px'});
+
+                const items = activegrow.filter(item => item.bin && item.bin.trim().toLowerCase() === bin.label.trim().toLowerCase());
+                const icons = items.map(getPlantIcon).join(' ');
+                binDiv.find('.icons').html(icons);
+
+                binDiv.draggable({
+                    containment: 'parent',
+                    stop: function() {
+                        bin.left = parseInt(binDiv.css('left'));
+                        bin.top = parseInt(binDiv.css('top'));
+                        saveData();
+                    }
+                });
+
+                binDiv.find('.rotate-icon').off('click').on('click', function(e) {
+                    e.stopPropagation();
+
+                    const currentPos = binDiv.position();
+
+                    if (bin.orientation === 'horizontal') {
+                        bin.width = BIN_VERTICAL.width;
+                        bin.height = BIN_VERTICAL.height;
+                        bin.orientation = 'vertical';
+                        binDiv.addClass('vertical');
+                    } else {
+                        bin.width = BIN_HORIZONTAL.width;
+                        bin.height = BIN_HORIZONTAL.height;
+                        bin.orientation = 'horizontal';
+                        binDiv.removeClass('vertical');
+                    }
+
+                    binDiv.css({
+                        width: bin.width + 'px',
+                        height: bin.height + 'px',
+                        left: currentPos.left + 'px',
+                        top: currentPos.top + 'px'
+                    });
+
+                    saveData();
+                });
+
+                binDiv.find('.edit-icon').off('click').on('click', function(e) {
+                    e.stopPropagation();
+                    const newLabel = prompt('Rename bin:', bin.label);
+                    if (newLabel) {
+                        bin.label = newLabel;
+                        binDiv.find('.label').text(newLabel);
+                        saveData();
+                    }
+                });
+
+                binDiv.find('.delete-icon').off('click').on('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm(`Delete ${bin.label}?`)) {
+                        binDiv.remove();
+                        bins = bins.filter(b => b.id !== bin.id);
+                        saveData();
+                    }
+                });
+
+                binDiv.off('click.select').on('click.select', function(e) {
+                    if (!$(e.target).hasClass('action-icon')) {
+                        if ($(this).hasClass('selected')) {
+                            $(this).removeClass('selected');
+                        } else {
+                            $('.bin.selected, .ground-area.selected').removeClass('selected');
+                            $(this).addClass('selected');
+                        }
+                    }
+                });
+
+                binDiv.off('dblclick').on('dblclick', function(e) {
+                    e.stopPropagation();
+                    showContents(bin.label);
+                });
+            });
+        }
+
+        function renderGroundAreas() {
+            groundAreas.forEach(area => {
+                let areaDiv = $(`#${area.id}`);
+                if (areaDiv.length === 0) {
+                    areaDiv = $(`<div class="ground-area" id="${area.id}">
+                        <span class="label">${area.name}</span>
+                        <div class="icons"></div>
+                        <div class="action-icon edit-icon">✎</div>
+                        <div class="action-icon delete-icon">✖</div>
+                    </div>`);
+                    canvas.append(areaDiv);
+                }
+                areaDiv.css({
+                    left: area.left + 'px',
+                    top: area.top + 'px',
+                    width: area.width + 'px',
+                    height: area.height + 'px'
+                });
+
+                const items = activegrow.filter(item => item.bin && item.bin.trim().toLowerCase() === area.name.trim().toLowerCase());
+                const icons = items.map(getPlantIcon).join(' ');
+                areaDiv.find('.icons').html(icons);
+
+                areaDiv.find('.edit-icon').css({right: '2px'});
+                areaDiv.find('.delete-icon').css({right: '20px'});
+
+                areaDiv.draggable({
+                    containment: 'parent',
+                    stop: function() {
+                        area.left = parseInt(areaDiv.css('left'));
+                        area.top = parseInt(areaDiv.css('top'));
+                        saveData();
+                    }
+                });
+
+                areaDiv.resizable({
+                    containment: 'parent',
+                    stop: function() {
+                        area.width = areaDiv.width();
+                        area.height = areaDiv.height();
+                        saveData();
+                    }
+                });
+
+                areaDiv.find('.edit-icon').off('click').on('click', function(e) {
+                    e.stopPropagation();
+                    const newName = prompt('Rename area:', area.name);
+                    if (newName) {
+                        area.name = newName;
+                        areaDiv.find('.label').text(newName);
+                        saveData();
+                    }
+                });
+
+                areaDiv.find('.delete-icon').off('click').on('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm(`Delete ${area.name}?`)) {
+                        areaDiv.remove();
+                        groundAreas = groundAreas.filter(a => a.id !== area.id);
+                        saveData();
+                    }
+                });
+
+                areaDiv.off('click.select').on('click.select', function(e) {
+                    if (!$(e.target).hasClass('action-icon')) {
+                        if ($(this).hasClass('selected')) {
+                            $(this).removeClass('selected');
+                        } else {
+                            $('.bin.selected, .ground-area.selected').removeClass('selected');
+                            $(this).addClass('selected');
+                        }
+                    }
+                });
+
+                areaDiv.off('dblclick').on('dblclick', function(e) {
+                    e.stopPropagation();
+                    showContents(area.name);
+                });
+            });
+        }
+
+        canvas.off('click.deselect').on('click.deselect', function(e) {
+            if (e.target === this) {
+                $('.bin.selected, .ground-area.selected').removeClass('selected');
+            }
+        });
+
+        function showContents(label) {
+            const contents = activegrow.filter(item => {
+                return item.bin && item.bin.trim().toLowerCase() === label.trim().toLowerCase();
+            });
+
+            let list = '';
+            if (contents.length === 0) {
+                list = '<p style="color:#777; text-align:center; padding:30px; font-size:16px;">No plants currently growing here.</p>';
+            } else {
+                list = '<div>';
+                contents.forEach(item => {
+                    list += `
+                        <div style="background:#f9f9f9; border-left:4px solid #4caf50; padding:12px; margin-bottom:12px; border-radius:4px;">
+                            <strong>${item.name || 'Unnamed'}</strong> ${item.variety ? '(' + item.variety + ')' : ''}
+                            <div><strong>Type:</strong> ${item.type || '-'}</div>
+                            <div><strong>Quantity:</strong> ${item.qty || 1}</div>
+                            <div><strong>Seeded:</strong> ${item.seeddate || '-'}</div>
+                            <div><strong>Maturity:</strong> ${item.maturitydate || '-'}</div>
+                            ${item.notes ? `<div><strong>Notes:</strong> ${item.notes}</div>` : ''}
+                        </div>
+                    `;
+                });
+                list += '</div>';
+            }
+
+            $('#contents-list').html(list);
+            $('#contents-popup').dialog({
+                title: `Contents of ${label}`,
+                width: 550,
+                modal: false,
+                resizable: true,
+                draggable: true
+            });
+        }
+
+        $('#manage-calendar').click(() => {
+            $('#calendar-popup').dialog({
+                title: 'Garden Calendar',
+                width: 540,
+                height: 500,
+                open: () => {
+                    if (!calendarInitialized) {
+                        $("#calendar").datepicker({
+                            inline: true,
+                            dateFormat: "mm/dd/yy",
+                            yearRange: "2026:2026",
+                            defaultDate: new Date(2026, 0, 1),
+                            beforeShowDay: function(date) {
+                                var dateStr = $.datepicker.formatDate('yy-mm-dd', date);
+                                const entry = notes[dateStr];
+                                if (entry) {
+                                    const className = entry.type === 'reminder' ? 'has-reminder' : 'has-note';
+                                    return [true, className, entry.type === 'reminder' ? 'Reminder' : 'Note'];
+                                }
+                                return [true, "", ""];
+                            },
+                            onSelect: function(dateText) {
+                                const selectedDate = $("#calendar").datepicker('getDate');
+                                const internalStr = $.datepicker.formatDate('yy-mm-dd', selectedDate);
+                                openNoteModal(internalStr);
+                            }
+                        });
+                        calendarInitialized = true;
+                    }
+                    fetchWeather();
+                }
+            });
+        });
+
+        function fetchWeather() {
+            fetch('https://wttr.in/Lancaster%20N.H.%2003584?format=j1')
+                .then(response => response.json())
+                .then(data => {
+                    let forecastHtml = '<h3>Weather Forecast for Lancaster, N.H. 03584</h3>';
+                    data.weather.forEach((day, index) => {
+                        const midday = day.hourly.find(h => h.time === '1200') || day.hourly[0];
+                        forecastHtml += `<p>Day ${index + 1} (${day.date}): High: ${day.maxtempF}°F, Low: ${day.mintempF}°F, Condition: ${midday.weatherDesc[0].value}, Precip: ${midday.chanceofrain}%</p>`;
+                    });
+                    $('#weather-forecast').html(forecastHtml);
+                })
+                .catch(error => {
+                    $('#weather-forecast').html('<p>Unable to fetch weather forecast.</p>');
+                });
+        }
+
+        function openNoteModal(dateStr) {
+            const entry = notes[dateStr] || {text: '', type: 'note'};
+            $('#entry-type').val(entry.type);
+            $('#date-note').val(entry.text);
+            $('#note-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const text = $('#date-note').val().trim();
+                        const type = $('#entry-type').val();
+                        if (text) {
+                            notes[dateStr] = {text, type};
+                        } else {
+                            delete notes[dateStr];
+                        }
+                        saveData();
+                        $('#note-modal').dialog('close');
+                        $("#calendar").datepicker('refresh');
+                    },
+                    "Cancel": () => {
+                        $('#note-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        $('#manage-calculator').click(() => {
+            $('#calculator-popup').dialog({
+                width: 300,
+                height: 200
+            });
+        });
+
+        $('#calculator-popup').on('input', '#cubic-feet', function() {
+            const feet = parseFloat($(this).val()) || 0;
+            const yards = (feet / 27).toFixed(3);
+            $('#cubic-yards').text(yards);
+        });
+
+        $('#export-data').click(() => {
+            const data = {
+                bins: bins,
+                groundAreas: groundAreas,
+                nextBinId: nextBinId,
+                nextGroundId: nextGroundId,
+                needed: needed,
+                seeds: seeds,
+                soils: soils,
+                fertilizers: fertilizers,
+                activegrow: activegrow,
+                harvest: harvest,
+                onhand: onhand,
+                notes: notes
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'garden_data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        $('#import-data').click(() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const importedData = JSON.parse(e.target.result);
+                    bins = importedData.bins || [];
+                    groundAreas = importedData.groundAreas || [];
+                    nextBinId = importedData.nextBinId || 1;
+                    nextGroundId = importedData.nextGroundId || 1;
+                    needed = importedData.needed || [];
+                    seeds = importedData.seeds || [];
+                    soils = importedData.soils || [];
+                    fertilizers = importedData.fertilizers || [];
+                    activegrow = importedData.activegrow || [];
+                    harvest = importedData.harvest || [];
+                    onhand = importedData.onhand || [];
+                    notes = importedData.notes || {};
+
+                    saveData();
+                    canvas.empty();
+                    renderAll();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        // Needed Menu
+        $('#manage-needed').click(() => {
+            $('#needed-popup').dialog({
+                title: 'Needed Items',
+                width: 900,
+                height: 600,
+                open: () => renderNeededTable()
+            });
+        });
+
+        function renderNeededTable() {
+            const content = $('#needed-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New Needed Item</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Qty (unit)</th>
+                            <th>Date Needed</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (needed.length === 0) {
+                table += `<tr><td colspan="5" style="text-align:center; padding:30px; color:#777;">No items needed yet. Click "+ Add New Needed Item" to begin.</td></tr>`;
+            } else {
+                needed.forEach((item, i) => {
+                    const qtyDisplay = `${item.qty || 0} ${item.unit || 'pounds'}`;
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${qtyDisplay}</td>
+                            <td>${item.date || '-'}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openNeededModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openNeededModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this item?')) {
+                    needed.splice($(this).data('index'), 1);
+                    saveData();
+                    renderNeededTable();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('Needed Items', needed, [
+                    {key: 'name', label: 'Name'},
+                    {key: 'qty', label: 'Quantity', formatter: (item) => `${item.qty || 0} ${item.unit || 'pounds'}`},
+                    {key: 'date', label: 'Date Needed'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openNeededModal() {
+            if (currentIndex !== null) {
+                const item = needed[currentIndex];
+                $('#needed-name').val(item.name);
+                $('#needed-qty').val(item.qty);
+                $('#needed-unit').val(item.unit || 'pounds');
+                $('#needed-date').val(item.date);
+                $('#needed-notes').val(item.notes);
+            } else {
+                $('#needed-name').val('');
+                $('#needed-qty').val('1');
+                $('#needed-unit').val('pounds');
+                $('#needed-date').val('');
+                $('#needed-notes').val('');
+            }
+
+            $('#add-needed-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#needed-name').val() || 'Unnamed',
+                            qty: parseFloat($('#needed-qty').val()) || 0,
+                            unit: $('#needed-unit').val(),
+                            date: $('#needed-date').val(),
+                            notes: $('#needed-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            needed[currentIndex] = item;
+                        } else {
+                            needed.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderNeededTable();
+                        $('#add-needed-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-needed-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        // Seeds Menu
+        $('#manage-seeds').click(() => {
+            $('#seeds-popup').dialog({
+                title: 'Seeds Inventory',
+                width: 900,
+                height: 600,
+                open: () => renderSeedsTable()
+            });
+        });
+
+        function renderSeedsTable() {
+            const content = $('#seeds-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New Seed</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Variety</th>
+                            <th>Type</th>
+                            <th>Purchase Date</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (seeds.length === 0) {
+                table += `<tr><td colspan="6" style="text-align:center; padding:30px; color:#777;">No seeds added yet. Click "+ Add New Seed" to begin.</td></tr>`;
+            } else {
+                seeds.forEach((item, i) => {
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${item.variety || '-'}</td>
+                            <td>${item.type || '-'}</td>
+                            <td>${item.purchasedate || '-'}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openSeedModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openSeedModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this seed?')) {
+                    seeds.splice($(this).data('index'), 1);
+                    saveData();
+                    renderSeedsTable();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('Seeds Inventory', seeds, [
+                    {key: 'name', label: 'Name'},
+                    {key: 'variety', label: 'Variety'},
+                    {key: 'type', label: 'Type'},
+                    {key: 'purchasedate', label: 'Purchase Date'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openSeedModal() {
+            if (currentIndex !== null) {
+                const item = seeds[currentIndex];
+                $('#seed-name').val(item.name);
+                $('#seed-variety').val(item.variety);
+                $('#seed-type').val(item.type || 'Vegetable');
+                $('#seed-purchase-date').val(item.purchasedate);
+                $('#seed-notes').val(item.notes);
+            } else {
+                $('#seed-name').val('');
+                $('#seed-variety').val('');
+                $('#seed-type').val('Vegetable');
+                $('#seed-purchase-date').val('');
+                $('#seed-notes').val('');
+            }
+
+            $('#add-seed-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#seed-name').val() || 'Unnamed',
+                            variety: $('#seed-variety').val(),
+                            type: $('#seed-type').val(),
+                            purchasedate: $('#seed-purchase-date').val(),
+                            notes: $('#seed-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            seeds[currentIndex] = item;
+                        } else {
+                            seeds.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderSeedsTable();
+                        $('#add-seed-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-seed-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        // Soil Menu
+        $('#manage-soil').click(() => {
+            $('#soil-popup').dialog({
+                title: 'Soil Inventory',
+                width: 900,
+                height: 600,
+                open: () => renderSoilTable()
+            });
+        });
+
+        function renderSoilTable() {
+            const content = $('#soil-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New Soil</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Stock</th>
+                            <th>Name</th>
+                            <th>Qty</th>
+                            <th>Category</th>
+                            <th>Date Acquired</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (soils.length === 0) {
+                table += `<tr><td colspan="7" style="text-align:center; padding:30px; color:#777;">No soil added yet. Click "+ Add New Soil" to begin.</td></tr>`;
+            } else {
+                soils.forEach((item, i) => {
+                    const inStock = (item.qty || 0) > 0;
+                    const indicator = inStock ? '<span class="stock-indicator in-stock"></span>' : '<span class="stock-indicator out-of-stock"></span>';
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td>${indicator}</td>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${item.qty || 0}</td>
+                            <td>${item.category || '-'}</td>
+                            <td>${item.date || '-'}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openSoilModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openSoilModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this soil entry?')) {
+                    soils.splice($(this).data('index'), 1);
+                    saveData();
+                    renderSoilTable();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('Soil Inventory', soils, [
+                    {key: 'inStock', label: 'Stock', formatter: (item) => (item.qty || 0) > 0 ? 'In Stock' : 'Out of Stock'},
+                    {key: 'name', label: 'Name'},
+                    {key: 'qty', label: 'Quantity'},
+                    {key: 'category', label: 'Category'},
+                    {key: 'date', label: 'Date Acquired'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openSoilModal() {
+            if (currentIndex !== null) {
+                const item = soils[currentIndex];
+                $('#soil-name').val(item.name);
+                $('#soil-qty').val(item.qty);
+                $('#soil-category').val(item.category);
+                $('#soil-date').val(item.date);
+                $('#soil-notes').val(item.notes);
+            } else {
+                $('#soil-name').val('');
+                $('#soil-qty').val('0');
+                $('#soil-category').val('');
+                $('#soil-date').val('');
+                $('#soil-notes').val('');
+            }
+
+            $('#add-soil-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#soil-name').val() || 'Unnamed',
+                            qty: parseFloat($('#soil-qty').val()) || 0,
+                            category: $('#soil-category').val(),
+                            date: $('#soil-date').val(),
+                            notes: $('#soil-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            soils[currentIndex] = item;
+                        } else {
+                            soils.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderSoilTable();
+                        $('#add-soil-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-soil-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        // Fertilizer Menu
+        $('#manage-fertilizer').click(() => {
+            $('#fertilizer-popup').dialog({
+                title: 'Fertilizer Inventory',
+                width: 900,
+                height: 600,
+                open: () => renderFertilizerTable()
+            });
+        });
+
+        function renderFertilizerTable() {
+            const content = $('#fertilizer-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New Fertilizer</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Stock</th>
+                            <th>Name</th>
+                            <th>Qty</th>
+                            <th>Category</th>
+                            <th>Date Acquired</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (fertilizers.length === 0) {
+                table += `<tr><td colspan="7" style="text-align:center; padding:30px; color:#777;">No fertilizer added yet. Click "+ Add New Fertilizer" to begin.</td></tr>`;
+            } else {
+                fertilizers.forEach((item, i) => {
+                    const inStock = (item.qty || 0) > 0;
+                    const indicator = inStock ? '<span class="stock-indicator in-stock"></span>' : '<span class="stock-indicator out-of-stock"></span>';
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td>${indicator}</td>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${item.qty || 0}</td>
+                            <td>${item.category || '-'}</td>
+                            <td>${item.date || '-'}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openFertilizerModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openFertilizerModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this fertilizer entry?')) {
+                    fertilizers.splice($(this).data('index'), 1);
+                    saveData();
+                    renderFertilizerTable();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('Fertilizer Inventory', fertilizers, [
+                    {key: 'inStock', label: 'Stock', formatter: (item) => (item.qty || 0) > 0 ? 'In Stock' : 'Out of Stock'},
+                    {key: 'name', label: 'Name'},
+                    {key: 'qty', label: 'Quantity'},
+                    {key: 'category', label: 'Category'},
+                    {key: 'date', label: 'Date Acquired'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openFertilizerModal() {
+            if (currentIndex !== null) {
+                const item = fertilizers[currentIndex];
+                $('#fert-name').val(item.name);
+                $('#fert-qty').val(item.qty);
+                $('#fert-category').val(item.category);
+                $('#fert-date').val(item.date);
+                $('#fert-notes').val(item.notes);
+            } else {
+                $('#fert-name').val('');
+                $('#fert-qty').val('0');
+                $('#fert-category').val('');
+                $('#fert-date').val('');
+                $('#fert-notes').val('');
+            }
+
+            $('#add-fertilizer-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#fert-name').val() || 'Unnamed',
+                            qty: parseFloat($('#fert-qty').val()) || 0,
+                            category: $('#fert-category').val(),
+                            date: $('#fert-date').val(),
+                            notes: $('#fert-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            fertilizers[currentIndex] = item;
+                        } else {
+                            fertilizers.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderFertilizerTable();
+                        $('#add-fertilizer-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-fertilizer-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        // Active Grow Menu
+        $('#manage-activegrow').click(() => {
+            $('#activegrow-popup').dialog({
+                title: 'Active Grow',
+                width: 900,
+                height: 600,
+                open: () => renderActiveGrowTable()
+            });
+        });
+
+        function renderActiveGrowTable() {
+            const content = $('#activegrow-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New Active Grow</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Variety</th>
+                            <th>Type</th>
+                            <th>Bin/Area #</th>
+                            <th>Qty</th>
+                            <th>Seed Date</th>
+                            <th>Maturity Date</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (activegrow.length === 0) {
+                table += `<tr><td colspan="9" style="text-align:center; padding:30px; color:#777;">No plants currently growing. Click "+ Add New Active Grow" to begin.</td></tr>`;
+            } else {
+                activegrow.forEach((item, i) => {
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${item.variety || '-'}</td>
+                            <td>${item.type || '-'}</td>
+                            <td>${item.bin || '-'}</td>
+                            <td>${item.qty || 1}</td>
+                            <td>${item.seeddate || '-'}</td>
+                            <td>${item.maturitydate || '-'}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openActiveGrowModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openActiveGrowModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this active grow entry?')) {
+                    activegrow.splice($(this).data('index'), 1);
+                    saveData();
+                    renderActiveGrowTable();
+                    renderBins();
+                    renderGroundAreas();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('Active Grow', activegrow, [
+                    {key: 'name', label: 'Name'},
+                    {key: 'variety', label: 'Variety'},
+                    {key: 'type', label: 'Type'},
+                    {key: 'bin', label: 'Bin/Area #'},
+                    {key: 'qty', label: 'Quantity'},
+                    {key: 'seeddate', label: 'Seed Date'},
+                    {key: 'maturitydate', label: 'Maturity Date'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openActiveGrowModal() {
+            if (currentIndex !== null) {
+                const item = activegrow[currentIndex];
+                $('#activegrow-name').val(item.name);
+                $('#activegrow-variety').val(item.variety);
+                $('#activegrow-type').val(item.type || 'Vegetable');
+                $('#activegrow-bin').val(item.bin);
+                $('#activegrow-qty').val(item.qty);
+                $('#activegrow-seeddate').val(item.seeddate);
+                $('#activegrow-maturitydate').val(item.maturitydate);
+                $('#activegrow-icon').val(item.icon || '');
+                $('#activegrow-notes').val(item.notes);
+            } else {
+                $('#activegrow-name').val('');
+                $('#activegrow-variety').val('');
+                $('#activegrow-type').val('Vegetable');
+                $('#activegrow-bin').val('');
+                $('#activegrow-qty').val('1');
+                $('#activegrow-seeddate').val('');
+                $('#activegrow-maturitydate').val('');
+                $('#activegrow-icon').val('');
+                $('#activegrow-notes').val('');
+            }
+
+            $('#add-activegrow-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#activegrow-name').val() || 'Unnamed',
+                            variety: $('#activegrow-variety').val(),
+                            type: $('#activegrow-type').val(),
+                            bin: $('#activegrow-bin').val(),
+                            qty: parseFloat($('#activegrow-qty').val()) || 1,
+                            seeddate: $('#activegrow-seeddate').val(),
+                            maturitydate: $('#activegrow-maturitydate').val(),
+                            icon: $('#activegrow-icon').val(),
+                            notes: $('#activegrow-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            activegrow[currentIndex] = item;
+                        } else {
+                            activegrow.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderActiveGrowTable();
+                        renderBins();
+                        renderGroundAreas();
+                        $('#add-activegrow-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-activegrow-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        // Harvest Menu
+        $('#manage-harvest').click(() => {
+            $('#harvest-popup').dialog({
+                title: 'Harvest Log',
+                width: 900,
+                height: 600,
+                open: () => renderHarvestTable()
+            });
+        });
+
+        function renderHarvestTable() {
+            const content = $('#harvest-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New Harvest</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Quality</th>
+                            <th>Crop Name</th>
+                            <th>Qty (unit)</th>
+                            <th>Type</th>
+                            <th>Date Harvested</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (harvest.length === 0) {
+                table += `<tr><td colspan="7" style="text-align:center; padding:30px; color:#777;">No harvests recorded yet. Click "+ Add New Harvest" to begin.</td></tr>`;
+            } else {
+                harvest.forEach((item, i) => {
+                    const qualityClass = 'harvest-' + item.quality;
+                    const indicator = `<span class="harvest-indicator ${qualityClass}"></span>`;
+                    const qtyDisplay = `${item.qty || 0} ${item.unit || 'pounds'}`;
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td>${indicator}</td>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${qtyDisplay}</td>
+                            <td>${item.type || '-'}</td>
+                            <td>${item.date || '-'}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openHarvestModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openHarvestModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this harvest entry?')) {
+                    harvest.splice($(this).data('index'), 1);
+                    saveData();
+                    renderHarvestTable();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('Harvest Log', harvest, [
+                    {key: 'quality', label: 'Quality'},
+                    {key: 'name', label: 'Crop Name'},
+                    {key: 'qty', label: 'Quantity (unit)', formatter: (item) => `${item.qty || 0} ${item.unit || 'pounds'}`},
+                    {key: 'type', label: 'Type'},
+                    {key: 'date', label: 'Date Harvested'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openHarvestModal() {
+            if (currentIndex !== null) {
+                const item = harvest[currentIndex];
+                $('#harvest-name').val(item.name);
+                $('#harvest-quality').val(item.quality || 'good');
+                $('#harvest-type').val(item.type || 'Vegetable');
+                $('#harvest-qty').val(item.qty);
+                $('#harvest-unit').val(item.unit || 'pounds');
+                $('#harvest-date').val(item.date);
+                $('#harvest-notes').val(item.notes);
+            } else {
+                $('#harvest-name').val('');
+                $('#harvest-quality').val('good');
+                $('#harvest-type').val('Vegetable');
+                $('#harvest-qty').val('0');
+                $('#harvest-unit').val('pounds');
+                $('#harvest-date').val('');
+                $('#harvest-notes').val('');
+            }
+
+            $('#add-harvest-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#harvest-name').val() || 'Unnamed',
+                            quality: $('#harvest-quality').val(),
+                            type: $('#harvest-type').val(),
+                            qty: parseFloat($('#harvest-qty').val()) || 0,
+                            unit: $('#harvest-unit').val(),
+                            date: $('#harvest-date').val(),
+                            notes: $('#harvest-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            harvest[currentIndex] = item;
+                        } else {
+                            harvest.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderHarvestTable();
+                        $('#add-harvest-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-harvest-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        // On-Hand Menu
+        $('#manage-onhand').click(() => {
+            $('#onhand-popup').dialog({
+                title: 'On-Hand Inventory',
+                width: 900,
+                height: 600,
+                open: () => renderOnHandTable()
+            });
+        });
+
+        function renderOnHandTable() {
+            const content = $('#onhand-content');
+            content.empty();
+
+            content.append(`<button class="add-new-btn">+ Add New On-Hand Item</button>`);
+            content.append(`<button class="print-btn">Print</button>`);
+
+            let table = `
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Variety</th>
+                            <th>Type</th>
+                            <th>Qty</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            if (onhand.length === 0) {
+                table += `<tr><td colspan="6" style="text-align:center; padding:30px; color:#777;">No items on hand yet. Click "+ Add New On-Hand Item" to begin.</td></tr>`;
+            } else {
+                onhand.forEach((item, i) => {
+                    const notesDisplay = item.notes ? item.notes.substring(0, 50) + (item.notes.length > 50 ? '...' : '') : '-';
+                    table += `
+                        <tr>
+                            <td><strong>${item.name || 'Unnamed'}</strong></td>
+                            <td>${item.variety || '-'}</td>
+                            <td>${item.type || '-'}</td>
+                            <td>${item.qty || 0}</td>
+                            <td class="notes-cell" data-full="${item.notes || ''}">${notesDisplay}</td>
+                            <td>
+                                <button class="edit-btn" data-index="${i}">Edit</button>
+                                <button class="delete-btn" data-index="${i}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            table += '</tbody></table>';
+            content.append(table);
+
+            content.find('.add-new-btn').click(() => openOnHandModal());
+
+            content.find('.edit-btn').click(function() {
+                currentIndex = $(this).data('index');
+                openOnHandModal();
+            });
+
+            content.find('.delete-btn').click(function() {
+                if (confirm('Delete this on-hand item?')) {
+                    onhand.splice($(this).data('index'), 1);
+                    saveData();
+                    renderOnHandTable();
+                }
+            });
+
+            content.find('.notes-cell').click(function() {
+                const fullNotes = $(this).data('full') || 'No notes';
+                $('#full-notes').text(fullNotes);
+                $('#notes-modal').dialog({
+                    modal: true,
+                    width: 500,
+                    title: 'Full Notes'
+                });
+            });
+
+            content.find('.print-btn').click(function() {
+                printTable('On-Hand Inventory', onhand, [
+                    {key: 'name', label: 'Name'},
+                    {key: 'variety', label: 'Variety'},
+                    {key: 'type', label: 'Type'},
+                    {key: 'qty', label: 'Quantity'},
+                    {key: 'notes', label: 'Notes'}
+                ]);
+            });
+        }
+
+        function openOnHandModal() {
+            if (currentIndex !== null) {
+                const item = onhand[currentIndex];
+                $('#onhand-name').val(item.name);
+                $('#onhand-variety').val(item.variety);
+                $('#onhand-type').val(item.type || 'Vegetable');
+                $('#onhand-qty').val(item.qty);
+                $('#onhand-notes').val(item.notes);
+            } else {
+                $('#onhand-name').val('');
+                $('#onhand-variety').val('');
+                $('#onhand-type').val('Vegetable');
+                $('#onhand-qty').val('0');
+                $('#onhand-notes').val('');
+            }
+
+            $('#add-onhand-modal').dialog({
+                modal: true,
+                width: 450,
+                buttons: {
+                    "Save": () => {
+                        const item = {
+                            name: $('#onhand-name').val() || 'Unnamed',
+                            variety: $('#onhand-variety').val(),
+                            type: $('#onhand-type').val(),
+                            qty: parseFloat($('#onhand-qty').val()) || 0,
+                            notes: $('#onhand-notes').val()
+                        };
+                        if (currentIndex !== null) {
+                            onhand[currentIndex] = item;
+                        } else {
+                            onhand.push(item);
+                        }
+                        currentIndex = null;
+                        saveData();
+                        renderOnHandTable();
+                        $('#add-onhand-modal').dialog('close');
+                    },
+                    "Cancel": () => {
+                        currentIndex = null;
+                        $('#add-onhand-modal').dialog('close');
+                    }
+                }
+            });
+        }
+
+        $('#add-bin').click(() => addBin());
+        $('#add-ground').click(() => addGroundArea());
+
+        function saveData() {
+            localStorage.setItem('gardenBins', JSON.stringify(bins));
+            localStorage.setItem('groundAreas', JSON.stringify(groundAreas));
+            localStorage.setItem('nextBinId', nextBinId);
+            localStorage.setItem('nextGroundId', nextGroundId);
+            localStorage.setItem('neededItems', JSON.stringify(needed));
+            localStorage.setItem('seedInventory', JSON.stringify(seeds));
+            localStorage.setItem('soilInventory', JSON.stringify(soils));
+            localStorage.setItem('fertilizerInventory', JSON.stringify(fertilizers));
+            localStorage.setItem('activeGrow', JSON.stringify(activegrow));
+            localStorage.setItem('harvestLog', JSON.stringify(harvest));
+            localStorage.setItem('onHandInventory', JSON.stringify(onhand));
+            localStorage.setItem('calendarNotes', JSON.stringify(notes));
+        }
+
+        function loadData() {
+            const savedBins = localStorage.getItem('gardenBins');
+            const savedGround = localStorage.getItem('groundAreas');
+            const savedNextBin = localStorage.getItem('nextBinId');
+            const savedNextGround = localStorage.getItem('nextGroundId');
+            const savedNeeded = localStorage.getItem('neededItems');
+            const savedSeeds = localStorage.getItem('seedInventory');
+            const savedSoils = localStorage.getItem('soilInventory');
+            const savedFert = localStorage.getItem('fertilizerInventory');
+            const savedActiveGrow = localStorage.getItem('activeGrow');
+            const savedHarvest = localStorage.getItem('harvestLog');
+            const savedOnHand = localStorage.getItem('onHandInventory');
+            const savedNotes = localStorage.getItem('calendarNotes');
+
+            if (savedBins) bins = JSON.parse(savedBins);
+            if (savedGround) groundAreas = JSON.parse(savedGround);
+            if (savedNextBin) nextBinId = parseInt(savedNextBin) || 1;
+            if (savedNextGround) nextGroundId = parseInt(savedNextGround) || 1;
+            if (savedNeeded) needed = JSON.parse(savedNeeded) || [];
+            if (savedSeeds) seeds = JSON.parse(savedSeeds) || [];
+            if (savedSoils) soils = JSON.parse(savedSoils) || [];
+            if (savedFert) fertilizers = JSON.parse(savedFert) || [];
+            if (savedActiveGrow) activegrow = JSON.parse(savedActiveGrow) || [];
+            if (savedHarvest) harvest = JSON.parse(savedHarvest) || [];
+            if (savedOnHand) onhand = JSON.parse(savedOnHand) || [];
+            if (savedNotes) notes = JSON.parse(savedNotes) || {};
+
+            renderAll();
+        }
+
+        function renderAll() {
+            renderBins();
+            renderGroundAreas();
+        }
+
+        function printTable(title, data, columns) {
+            let html = `
+                <html>
+                <head>
+                    <title>${title}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        h1 { text-align: center; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #999; padding: 10px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Picone Garden 2026 - ${title}</h1>
+                    <p style="text-align: center;">Printed on: ${new Date().toLocaleDateString('en-US')}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                ${columns.map(col => `<th>${col.label}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(item => `
+                                <tr>
+                                    ${columns.map(col => `
+                                        <td>${col.formatter ? col.formatter(item) : (item[col.key] || '-')}</td>
+                                    `).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+
+        window.addEventListener('beforeunload', saveData);
+
+        initDefault();
+    </script>
+</body>
+</html>
